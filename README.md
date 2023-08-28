@@ -43,14 +43,14 @@ YOLOv1-v5在YOLO算法的基础上，不断引入SOTA算法的各种提升模型
 
 由于`test`数据集没有标注，我们并不能定量对模型的准确性进行评估，因此我们让训练好的模型对`test`数据集中的图像进行预测，并在此展示对几张图片的探测和分割效果。
 ![baseline_img_412](baseline/img_resize_412.png)
-![baseline_img_435](baseline/img_resize_435.png)
 ![baseline_img_679](baseline/img_resize_679.png)
 ![baseline_img_462](baseline/img_resize_462.png)
 
 可以看出，baseline(Mask R-CNN)的探测产生了很多误判，例如有很多把一个卫星的部分当作整个卫星识别的情况；此外baseline分割的边缘十分粗糙，难以还原原始图片中的细节。最典型的问题体现在最后一张图，图中两颗人造卫星都没有被正确识别与分割。我们认为出现这一问题的根本原因是Mask R-CNN算法首先在图像中生成region proposals，对于人造卫星这种部分与整体相差不大的物体，很容易将只包含部分物体的区域作为RoI，继续在这个本就错误的区域内得出的bbox和mask必然会更加错误。各种图像增强、后处理并不能改变其本质，注定是吃力不讨好的事，于是我们选择放弃R-CNN系的模型。
 
 ## YOLOv5训练
-我们克隆了YOLOv5最新版本的仓库，使用yolov5l-seg模型对同样的数据集进行训练，同样训练12个epoch。由于YOLO模型在确定anchor时已经使用了nms/soft nms，使用训练好的模型对`test`图像测试时出现一个物体有多个框的概率大大降低。但是作为代价，有一些较小或模糊的卫星没有被识别出来。因此，我们又采用了下面这些数据增强技术：
+YOLOv5提供了5种不同深度和宽度的用于实例分割的预训练模型：分别是`yolov5n-seg`(nano), `yolov5s-seg`(small), `yolov5m-seg`(medium), `yolov5-seg`(large), `yolov5x-seg`(extremely large)。 我们使用yolov5l-seg模型进行训练，同样采用`train`, `val`和`test`数据集训练12个epoch。由于YOLO模型在确定anchor时已经使用了nms/soft nms，使用训练好的模型对`test`图像测试时出现一个物体有多个框的概率大大降低。但是作为代价，有一些较小或模糊的卫星没有被识别出来。因此，我们又采用了下面这些数据增强技术：
+
 1. HSV空间随机变换：变换最大的比例分别为Hue: 0.015; Saturation: 0.7; Value: 0.2。我们发现Value(明度)的变换如果太大，会导致模型在预测时把明度较低的陨石识别为卫星，因此应该谨慎取值。
 2. 随机旋转(degrees)：训练时将图片随机旋转0-90度的某一角度，以尽量覆盖卫星在空间中的任意取向。
 3. 随机平移(translate)：向随机方向平移图片尺寸的0.2倍。
@@ -64,15 +64,28 @@ YOLOv1-v5在YOLO算法的基础上，不断引入SOTA算法的各种提升模型
 其中Mosaic, Copypaste 以及 Mixup起到了大大扩充数据集的效果，对训练效率和效果的提升十分显著；此外主要是图片的刚体变换和逐像素变换。训练中输入网络的图片示意如下：
 ![train_batch](yolov5/train_batch1.jpg)
 
-为了与baseline进行直观的比较，我们的模型对前面的四张图片也进行了预测：
+为了与baseline进行直观的比较，我们的模型对前面的三张图片也进行了预测：
 ![yolov5_img_412](yolov5/img_resize_412.png)
-![yolov5_img_435](yolov5/img_resize_435.png)
 ![yolov5_img_679](yolov5/img_resize_679.png)
 ![yolov5_img_462](yolov5/img_resize_462.png)
 
-显然我们的模型与baseline相比表现明显更优，物体识别框能够准确识别单个物体，并且分割的边界也十分准确。更重要的是，我们的模型运行速度比baseline快。
+显然我们的模型与baseline相比表现明显更优，物体识别框能够准确识别单个物体，并且分割的边界也十分准确。此外，我们的模型运行速度十分快。在执行对`test`数据集的预测时，我们的模型的运行速度如下：
+> Speed: 0.6ms pre-process, 18.5ms inference, 1.3ms NMS per image at shape (1, 3, 640, 640)
+`test`数据集中图片的分辨率为1280×720，处理一张图片用时20ms左右，完全可以满足30fps视频的实时监控要求。
 
 # 训练结果
+我们的YOLOv5模型训练过程中loss变化展示如下：
+![](yolov5/results.png)
 
+接下来展示利用我们训练好的模型预测的卫星动画视频：
 ![](videos/1.gif)
 ![](videos/2.gif)
+![](videos/3.gif)
+![](videos/4.gif)
+
+# 结论
+我们分析了人造卫星的空间态势感知这一任务与一般实例分割任务的不同：一般任务中经常有图片中物体数目大、背景复杂，但单个物体的轮廓简单方正(如汽车、行人等)；而我们的任务中物体的种类少，人造卫星的形态复杂。结合以上特点，我们通过比较Mask R-CNN和YOLOv5的表现，证明了YOLO这类一阶段算法在准确性和预测效率上的优越性。
+
+此外我们在试验数据增广手段时发现，Mosaic和Copypaste方法能够显著提高训练的效果。太空中人造卫星的数据集大多背景空旷、物体稀疏，利用Mosaic等方法可以充分利用训练网络，一定程度上避免过拟合的问题，让网络学习到物体更本质的特征。
+
+最后，YOLOv5的部署简便、易于上手，对于大部分任务能做到开箱即用而且性能很好，如果在未来深空探测领域有空间态势感知的使用需求可以直接在其代码的基础上搭建模型。
