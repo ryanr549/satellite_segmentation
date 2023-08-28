@@ -74,5 +74,5 @@ YOLOv1-v5在YOLO算法的基础上，不断引入SOTA算法的各种提升模型
 
 # 训练结果
 
-![](videos/satellite_1.mp4)
-![](videos/satellite_2.mp4)
+![](videos/1.gif)
+![](videos/2.gif)
