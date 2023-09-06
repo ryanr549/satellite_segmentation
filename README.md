@@ -49,9 +49,9 @@ YOLOv1-v5在YOLO算法的基础上，不断引入SOTA算法的各种提升模型
 
 ## 数据集处理
 
-我们编写程序从`train`数据集中随机抽出300张作为验证集`val`，这有利于在后续训练中监测训练的情况，调整超参数使模型更准确并预防模型的过拟合。
+我们编写程序从`train`数据集中随机抽出300张作为验证集`val`，这有利于在后续训练中监测训练的情况，调整超参数使模型更准确并预防模型的过拟合。程序详见`code/gen_val.py`以及`code/data_shuffle.ipynb`。
 
-此外，赛事组织方提供的数据标注为COCO格式，而我们要使用YOLOv5模型需要使用YOLO格式的标注数据。于是我们使用YOLOv5开发者提供的格式转换器仓库[JSON2YOLO](https://github.com/ultralytics/JSON2YOLO)将json格式的标注文件转换为YOLO所需的txt格式。
+此外，赛事组织方提供的数据标注为COCO格式，而我们要使用YOLOv5模型需要使用YOLO格式的标注数据。于是我们使用YOLOv5开发者提供的格式转换器仓库[JSON2YOLO](https://github.com/ultralytics/JSON2YOLO)将json格式的标注文件转换为YOLO所需的txt格式(见`code/coco2yolo.ipynb`)。
 
 ## baseline训练
 
@@ -84,7 +84,21 @@ YOLOv5提供了5种不同深度和宽度的用于实例分割的预训练模型�
 8. 复制粘贴(copypaste): 将训练图片中的物体按照mask裁出来并贴到其他训练图片中，采用0.6的概率。
 9. 高斯模糊：blur_limit=7，在训练时给图片添加模糊。
 
-其中Mosaic, Copypaste 以及 Mixup起到了大大扩充数据集的效果，对训练效率和效果的提升十分显著；此外主要是图片的刚体变换和逐像素变换。训练中输入网络的图片示意如下：
+其中Mosaic, Copypaste 以及 Mixup起到了大大扩充数据集的效果，对训练效率和效果的提升十分显著；此外主要是图片的刚体变换和逐像素变换。
+
+输入命令：
+```bash
+python segment/train.py --epochs 12 --data ../dataset/satellites.yaml --weights yolov5l-seg.pt --img 1280 --cfg models/segment/yolov5l-seg.yaml --hyp data/hyps/hyp.scratch-exhigh.yaml --workers 0 --batch-size 4
+```
+进行训练。训练的配置文件见`code/satellites.yaml`,`code/models/segment/yolov5l-seg.yaml`以及`code/data/hyps/hyp.scratch-exhigh.yaml`。
+
+训练完毕后，输入
+```
+python segment/predict.py --weights runs/train-seg/expx/weights/last.pt --source ../dataset/test/test
+```
+对test数据集进行测试。
+
+训练中输入网络的图片示意如下：
 
 ![train_batch](yolov5/train_batch1.jpg)
 *train_batch*
