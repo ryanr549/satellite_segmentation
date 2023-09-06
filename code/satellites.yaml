@@ -1,0 +1,18 @@
+path: /data/yuhr/src/dataset
+train: images/train
+val: images/val
+test : images/test
+
+names:
+  0: satellite
+
+augmentations:
+- Albumentations:
+    blur_limit: 7
+    brightness_contrast:
+      brightness_limit: 0.2
+      contrast_limit: 0.2
+    gauss_noise:
+      var_limit: (10.0, 50.0)
+    motion_blur:
+      blur_limit: 7
